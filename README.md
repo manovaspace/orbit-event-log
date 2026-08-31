@@ -24,7 +24,7 @@ log, err := eventlog.Open(ctx, eventlog.Config{
 _ = log.Append(ctx, "notifications", event, "idempotency-key")
 ```
 
-Create a Postgres database (e.g. `event_log`) and set `DatabaseURL` before use.
+When using the Orbit dev stack, the `event_log` database is created by Postgres init scripts in `orbit-infra`.
 
 ## Development
 
