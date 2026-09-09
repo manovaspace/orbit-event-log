@@ -41,7 +41,7 @@ func TestAppendIdempotencyIntegration(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres not available: %v", err)
 	}
-	defer log.Close()
+	defer func() { _ = log.Close() }()
 
 	stream := "test-" + time.Now().Format("150405")
 	ev := eventlog.Event{
