@@ -3,6 +3,7 @@ package eventlog_test
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
@@ -30,14 +31,22 @@ func TestValidateEventRejectsEmptyType(t *testing.T) {
 	}
 }
 
+func TestOpenRequiresDatabaseURL(t *testing.T) {
+	if _, err := eventlog.Open(context.Background(), eventlog.Config{}); err == nil {
+		t.Fatal("expected an error when DatabaseURL is empty")
+	}
+}
+
 func TestAppendIdempotencyIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
 	ctx := context.Background()
-	log, err := eventlog.Open(ctx, eventlog.Config{
-		DatabaseURL: "postgres://orbit:orbit@localhost:10332/event_log?sslmode=disable",
-	})
+	log, err := eventlog.Open(ctx, eventlog.Config{DatabaseURL: dsn})
 	if err != nil {
 		t.Skipf("postgres not available: %v", err)
 	}
