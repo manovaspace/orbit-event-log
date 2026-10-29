@@ -19,12 +19,12 @@ go get github.com/manovaspace/orbit-event-log@latest
 import eventlog "github.com/manovaspace/orbit-event-log"
 
 log, err := eventlog.Open(ctx, eventlog.Config{
-    DatabaseURL: "postgres://orbit:orbit@localhost:10332/event_log?sslmode=disable",
+    DatabaseURL: os.Getenv("DATABASE_URL"), // required
 })
 _ = log.Append(ctx, "notifications", event, "idempotency-key")
 ```
 
-When using the Orbit dev stack, the `event_log` database is created by Postgres init scripts in `orbit-infra`.
+`DatabaseURL` is required: `Open` returns an error when it is empty. In the Orbit stack the `event_log` database is provisioned on the shared Postgres instance (`postgres/databases.tsv` in `orbit-infra`).
 
 ## Development
 
@@ -32,7 +32,7 @@ When using the Orbit dev stack, the `event_log` database is created by Postgres 
 go test ./...
 ```
 
-Integration tests skip when Postgres is unavailable or with `-short`.
+Integration tests need `TEST_DATABASE_URL` and skip when it is unset or with `-short`.
 
 ## Contributing
 

@@ -19,7 +19,7 @@ type pgLog struct {
 // Open connects to Postgres and returns an event Log.
 func Open(ctx context.Context, cfg Config) (Log, error) {
 	if cfg.DatabaseURL == "" {
-		cfg.DatabaseURL = "postgres://orbit:orbit@localhost:10332/event_log?sslmode=disable"
+		return nil, fmt.Errorf("eventlog: DatabaseURL is required")
 	}
 	if err := migrate(ctx, cfg.DatabaseURL); err != nil {
 		return nil, err
