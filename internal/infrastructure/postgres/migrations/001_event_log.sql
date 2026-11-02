@@ -1,4 +1,6 @@
 -- +goose Up
+-- The first migration is idempotent so a database created by the previous
+-- custom runner adopts goose as a no-op and goose records version 1.
 CREATE TABLE IF NOT EXISTS events (
     id BIGSERIAL PRIMARY KEY,
     stream TEXT NOT NULL,
