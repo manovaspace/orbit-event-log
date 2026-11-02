@@ -5,6 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/manovaspace/orbit-event-log/internal/application"
+	"github.com/manovaspace/orbit-event-log/internal/domain"
+	"github.com/manovaspace/orbit-event-log/internal/infrastructure/clock"
+	"github.com/manovaspace/orbit-event-log/internal/infrastructure/postgres"
+	"github.com/manovaspace/orbit-event-log/internal/infrastructure/postgres/migrations"
 )
 
 // Event is an immutable WAL entry.
@@ -35,17 +41,80 @@ type Config struct {
 
 // ValidateEvent checks required event fields before append.
 func ValidateEvent(e Event) error {
-	if e.Type == "" {
-		return fmt.Errorf("eventlog: missing event type")
-	}
-	if e.Payload == nil {
-		return fmt.Errorf("eventlog: missing payload")
-	}
-	if !json.Valid(e.Payload) {
-		return fmt.Errorf("eventlog: payload must be valid JSON")
-	}
-	if e.OccurredAt.IsZero() {
-		return fmt.Errorf("eventlog: missing occurred_at")
-	}
-	return nil
+	return domain.ValidateEvent(toDomainEvent(e))
 }
+
+// Open connects to Postgres and returns an event Log.
+func Open(ctx context.Context, cfg Config) (Log, error) {
+	if cfg.DatabaseURL == "" {
+		return nil, fmt.Errorf("eventlog: DatabaseURL is required")
+	}
+	if err := migrations.Up(ctx, cfg.DatabaseURL); err != nil {
+		return nil, err
+	}
+	store, err := postgres.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+	return &logAdapter{svc: application.New(application.Deps{
+		Store: store,
+		Clock: clock.New(),
+	})}, nil
+}
+
+// logAdapter keeps the exported types in this package and translates them to
+// the domain types the application layer uses. The shapes are identical, so the
+// mapping is a field copy.
+type logAdapter struct {
+	svc *application.Service
+}
+
+func (a *logAdapter) Append(ctx context.Context, stream string, event Event, idempotencyKey string) error {
+	return a.svc.Append(ctx, stream, toDomainEvent(event), idempotencyKey)
+}
+
+func (a *logAdapter) Read(ctx context.Context, stream string, fromOffset int64) ([]Event, error) {
+	events, err := a.svc.Read(ctx, stream, fromOffset)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Event, 0, len(events))
+	for _, e := range events {
+		out = append(out, fromDomainEvent(e))
+	}
+	return out, nil
+}
+
+func (a *logAdapter) Tail(ctx context.Context, stream string, handler TailHandler) error {
+	return a.svc.Tail(ctx, stream, func(ctx context.Context, event domain.Event) error {
+		return handler(ctx, fromDomainEvent(event))
+	})
+}
+
+func (a *logAdapter) Close() error {
+	return a.svc.Close()
+}
+
+func toDomainEvent(e Event) domain.Event {
+	return domain.Event{
+		Offset:      e.Offset,
+		Stream:      e.Stream,
+		Type:        e.Type,
+		Payload:     e.Payload,
+		OccurredAt:  e.OccurredAt,
+		Idempotency: e.Idempotency,
+	}
+}
+
+func fromDomainEvent(e domain.Event) Event {
+	return Event{
+		Offset:      e.Offset,
+		Stream:      e.Stream,
+		Type:        e.Type,
+		Payload:     e.Payload,
+		OccurredAt:  e.OccurredAt,
+		Idempotency: e.Idempotency,
+	}
+}
+
+var _ Log = (*logAdapter)(nil)
