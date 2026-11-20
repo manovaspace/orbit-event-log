@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1](https://github.com/manovaspace/orbit-event-log/compare/v0.1.0...v0.1.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **deps:** upgrade Go to 1.27.4 and patch vulnerable modules ([#25](https://github.com/manovaspace/orbit-event-log/issues/25)) ([0b8c60c](https://github.com/manovaspace/orbit-event-log/commit/0b8c60cd89f190ad46c7918923b74e8fa42631a2))
+
 ## 0.1.0 (2026-11-02)
 
 
